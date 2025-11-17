@@ -9,3 +9,8 @@ export interface Document {
   tags: string[];
   createdAt: number;
 }
+
+export interface CompanySettings {
+  logo: string | null; // base64 data URL
+  details: string;
+}

@@ -1,9 +1,11 @@
+
 import React, { useRef, useState } from 'react';
 import { SaveIcon } from './icons';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
 import { ExportMenu } from './ExportMenu';
 import { ConfirmationModal } from './ConfirmationModal';
+import { CompanySettings } from '../types';
 
 interface DocumentationOutputProps {
   title: string;
@@ -13,6 +15,7 @@ interface DocumentationOutputProps {
   screenshots: string[];
   isLoading: boolean;
   onSave: () => void;
+  companySettings: CompanySettings;
 }
 
 const parseMarkdown = (text: string) => {
@@ -83,7 +86,8 @@ export const DocumentationOutput: React.FC<DocumentationOutputProps> = ({
     onDocumentationChange, 
     screenshots, 
     isLoading, 
-    onSave 
+    onSave,
+    companySettings
 }) => {
   const [viewMode, setViewMode] = useState<'preview' | 'edit'>('preview');
   const contentRef = useRef<HTMLDivElement>(null);
@@ -101,25 +105,48 @@ export const DocumentationOutput: React.FC<DocumentationOutputProps> = ({
     if (!contentRef.current || !title) return;
     setIsExporting(true);
 
-    // Create a clone of the content to be styled for printing
     const contentToPrint = contentRef.current.cloneNode(true) as HTMLElement;
-
-    // Create a wrapper that will be rendered by html2canvas
     const printWrapper = document.createElement('div');
     printWrapper.style.position = 'absolute';
-    printWrapper.style.left = '-9999px'; // Position off-screen
+    printWrapper.style.left = '-9999px';
     printWrapper.style.top = '0';
     printWrapper.style.background = 'white';
     printWrapper.style.fontFamily = 'Arial, sans-serif';
     printWrapper.style.lineHeight = '1.6';
-    
-    // Set a fixed width similar to A4 and add padding for margins
-    printWrapper.style.width = '210mm'; 
-    printWrapper.style.padding = '20mm'; // This creates the document margins
+    printWrapper.style.width = '210mm';
+    printWrapper.style.padding = '20mm';
     printWrapper.style.boxSizing = 'border-box';
-    
-    // Reset and apply print-friendly styles to the cloned content
     printWrapper.style.color = '#000';
+
+    // Add Company Letterhead
+    if (companySettings.logo || companySettings.details) {
+      const header = document.createElement('div');
+      header.style.display = 'flex';
+      header.style.justifyContent = 'space-between';
+      header.style.alignItems = 'flex-start';
+      header.style.borderBottom = '2px solid #ccc';
+      header.style.paddingBottom = '10px';
+      header.style.marginBottom = '20px';
+
+      if (companySettings.logo) {
+        const logoImg = document.createElement('img');
+        logoImg.src = companySettings.logo;
+        logoImg.style.maxHeight = '80px';
+        logoImg.style.maxWidth = '200px';
+        header.appendChild(logoImg);
+      }
+
+      if (companySettings.details) {
+        const detailsDiv = document.createElement('div');
+        detailsDiv.style.textAlign = 'right';
+        detailsDiv.style.fontSize = '10pt';
+        detailsDiv.style.whiteSpace = 'pre-wrap';
+        detailsDiv.innerText = companySettings.details;
+        header.appendChild(detailsDiv);
+      }
+      printWrapper.appendChild(header);
+    }
+    
     contentToPrint.style.color = 'inherit';
     contentToPrint.querySelectorAll('*').forEach((el: HTMLElement) => {
         el.style.color = 'inherit';
@@ -144,7 +171,7 @@ export const DocumentationOutput: React.FC<DocumentationOutputProps> = ({
     
     try {
         const canvas = await html2canvas(printWrapper, {
-            scale: 2, // Higher resolution for better text quality
+            scale: 2,
             useCORS: true,
         });
 
@@ -158,17 +185,13 @@ export const DocumentationOutput: React.FC<DocumentationOutputProps> = ({
         const pdfWidth = pdf.internal.pageSize.getWidth();
         const pdfHeight = pdf.internal.pageSize.getHeight();
         
-        // Calculate the height of the image in the PDF, maintaining aspect ratio
         const imgHeight = (canvas.height * pdfWidth) / canvas.width;
-
         let heightLeft = imgHeight;
         let position = 0;
 
-        // Add the first page
         pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, imgHeight);
         heightLeft -= pdfHeight;
 
-        // Add subsequent pages if the content is too long
         while (heightLeft > 0) {
             position -= pdfHeight;
             pdf.addPage();
@@ -181,7 +204,6 @@ export const DocumentationOutput: React.FC<DocumentationOutputProps> = ({
     } catch (error) {
         console.error("Failed to generate PDF:", error);
     } finally {
-        // Clean up the temporary element from the DOM
         document.body.removeChild(printWrapper);
         setIsExporting(false);
     }

@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback, useMemo } from 'react';
 import { generateDocumentation } from './services/geminiService';
 import { Header } from './components/Header';
@@ -5,10 +6,11 @@ import { ProcessInput } from './components/ProcessInput';
 import { DocumentationOutput } from './components/DocumentationOutput';
 import { AlertTriangle, MenuIcon, XIcon } from './components/icons';
 import { useLocalStorage } from './hooks/useLocalStorage';
-import { Document } from './types';
+import { Document, CompanySettings } from './types';
 import { SaveDocumentModal } from './components/SaveDocumentModal';
 import { Sidebar } from './components/Sidebar';
 import { ConfirmationModal } from './components/ConfirmationModal';
+import { SettingsModal } from './components/SettingsModal';
 
 interface GenerationResult {
   title: string;
@@ -36,6 +38,12 @@ const App: React.FC = () => {
   const [currentDocumentId, setCurrentDocumentId] = useState<string | null>(null);
   
   const [deleteConfirmState, setDeleteConfirmState] = useState<{isOpen: boolean; docId: string | null}>({ isOpen: false, docId: null });
+
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+  const [companySettings, setCompanySettings] = useLocalStorage<CompanySettings>('companySettings', {
+    logo: null,
+    details: '',
+  });
 
   const filteredDocuments = useMemo(() => {
     return documents
@@ -235,9 +243,13 @@ const App: React.FC = () => {
     setDeleteConfirmState({ isOpen: false, docId: null });
   };
 
+  const handleSaveSettings = (newSettings: CompanySettings) => {
+    setCompanySettings(newSettings);
+  };
+
   return (
     <div className="min-h-screen bg-gray-900 text-gray-100 font-sans flex flex-col">
-      <Header>
+      <Header onOpenSettings={() => setIsSettingsModalOpen(true)}>
         <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="p-2 rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-cyan-500">
           {isSidebarOpen ? <XIcon className="h-6 w-6" /> : <MenuIcon className="h-6 w-6" />}
         </button>
@@ -276,6 +288,7 @@ const App: React.FC = () => {
             screenshots={screenshots}
             isLoading={isLoading}
             onSave={() => setIsSaveModalOpen(true)}
+            companySettings={companySettings}
           />
         </main>
       </div>
@@ -288,6 +301,12 @@ const App: React.FC = () => {
           onClose={() => setIsSaveModalOpen(false)}
         />
       )}
+      <SettingsModal
+        isOpen={isSettingsModalOpen}
+        onClose={() => setIsSettingsModalOpen(false)}
+        onSave={handleSaveSettings}
+        currentSettings={companySettings}
+      />
       {deleteConfirmState.isOpen && (
         <ConfirmationModal
           isOpen={deleteConfirmState.isOpen}
