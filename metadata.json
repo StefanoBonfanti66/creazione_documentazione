@@ -1,0 +1,7 @@
+{
+  "name": "Process Documenter Rev 1.0",
+  "description": "An application that uses AI to transform raw descriptions of desktop operations into structured, professional documentation. Simply describe your workflow, and the AI will format it into a clear, step-by-step guide.",
+  "requestFramePermissions": [
+    "display-capture"
+  ]
+}
